@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<aside class="sidebar">
+    <h2>Finance</h2>
+    <nav>
+        <button id="navDashboard">Dashboard</button>
+        <button id="navTransactions">Transactions</button>
+        <button id="navInsights">Insights</button>
+    </nav>
+    <div class="role-switch">
+        <label>Role:</label>
+        <select id="roleSelect">
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+        </select>
+    </div>
+</aside>
+<main class="content">
+    <section id="dashboardSection">
+        <h1>Dashboard Overview</h1>
+        <div class="cards">
+            <div class="card">
+                <h3>Total Balance</h3>
+                <h2 id="totalBalance">₹0</h2>
+            </div>
+            <div class="card">
+                <h3>Total Income</h3>
+                <h2 id="totalIncome">₹0</h2>
+            </div>
+            <div class="card">
+                <h3>Total Expenses</h3>
+                <h2 id="totalExpense">₹0</h2>
+            </div>
+        </div>
+        <div class="charts">
+            <canvas id="monthlyChart"></canvas>
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </section>
+    <section id="transactionsSection" class="hidden">
+        <h1>Transactions</h1>
+        <div id="transactionForm" class="card">
+            <h3>Add Transaction</h3>
+            <input type="text" id="descInput" placeholder="Description">
+            <input type="number" id="amountInput" placeholder="Amount">
+            <input type="date" id="dateInput">
+            <input type="text" id="categoryInput" placeholder="Category">
+            <select id="typeInput">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
+            <button id="addBtn">Add Transaction</button>
+        </div>
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Search...">
+            <select id="filterType">
+                <option value="all">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
+            <select id="sortBy">
+                <option value="date">Sort by Date</option>
+                <option value="amount">Sort by Amount</option>
+            </select>
+        </div>
+        <div id="emptyState" class="hidden">No transactions yet</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="transactionTable"></tbody>
+        </table>
+    </section>
+    <section id="insightsSection" class="hidden">
+        <h1>Insights</h1>
+        <div class="cards">
+            <div class="card">
+                <h3>Highest Spending Category</h3>
+                <p id="topCategory">--</p>
+            </div>
+            <div class="card">
+                <h3>Monthly Comparison</h3>
+                <p id="monthlyComparison">--</p>
+            </div>
+            <div class="card">
+                <h3>Average Monthly Expense</h3>
+                <p id="avgExpense">--</p>
+            </div>
+            <div class="card">
+                <h3>Savings Rate</h3>
+                <p id="savingsRate">--</p>
+            </div>
+        </div>
+    </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
