@@ -59,10 +59,15 @@ LocalStorage (for persistence)
 
 **Project Structure**
 Finance-Dashboard/
+
 │
+
 ├── index.html
+
 ├── style.css
+
 ├── app.js
+
 └── README.md
 
 **How to Run Locally**
