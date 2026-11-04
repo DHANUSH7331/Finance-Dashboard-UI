@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Dashboard</title>
+    <meta name="theme-color" content="#0b1220">
+    <meta name="description" content="Personal finance dashboard to track income, expenses and transactions.">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./icons/finance-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icons/finance-icon.svg">
     <link rel="stylesheet" href="styles.css">
 
     <!-- Chart.js CDN -->
@@ -111,5 +116,13 @@
     </section>
 </main>
 <script src="app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+        .catch((error) => console.error("Service worker registration failed:", error));
+    });
+  }
+</script>
 </body>
 </html>
