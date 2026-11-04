@@ -153,7 +153,7 @@ function calculateSummary() {
 }
 
 function calculateInsights() {
-    if (state.transactions.length === 0) {
+    if (state.transactions.length === 0 && fixedIncome <= 0) {
         document.getElementById("topCategory").innerText = "-";
         document.getElementById("savingsRate").innerText = "0%";
         return;
