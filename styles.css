@@ -229,3 +229,17 @@ tr:hover{
     .content { padding: 22px; }
     .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* Fixed income settings */
+.income-settings { margin-top: 20px; }
+.income-settings p { color: #6b7280; margin: 4px 0 14px; line-height: 1.5; }
+.income-settings-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.income-settings-controls label { color: #374151; font-weight: 600; }
+.income-settings-controls input { min-width: 180px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+.income-settings-controls button { padding: 10px 16px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+.income-settings-controls button:hover { background: #1d4ed8; }
+@media (max-width: 700px) {
+    .income-settings-controls { align-items: stretch; flex-direction: column; }
+    .income-settings-controls input, .income-settings-controls button { width: 100%; min-height: 44px; }
+}
