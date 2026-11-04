@@ -232,5 +232,34 @@ function renderAll() {
     applyFilters();
 }
 
-applyRoleUI();
+// Mobile navigation drawer
+const sidebar = document.getElementById("sidebar");
+const menuToggle = document.getElementById("menuToggle");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+
+function setSidebarOpen(open) {
+    if (!sidebar || !menuToggle || !sidebarOverlay) return;
+    sidebar.classList.toggle("is-open", open);
+    document.body.classList.toggle("sidebar-open", open);
+    sidebarOverlay.hidden = !open;
+    menuToggle.setAttribute("aria-expanded", String(open));
+    menuToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+}
+
+menuToggle?.addEventListener("click", () => {
+    setSidebarOpen(menuToggle.getAttribute("aria-expanded") !== "true");
+});
+sidebarOverlay?.addEventListener("click", () => setSidebarOpen(false));
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setSidebarOpen(false);
+});
+[["navDashboard", "dashboard"], ["navTransactions", "transactions"], ["navInsights", "insights"]]
+    .forEach(([id, section]) => {
+        document.getElementById(id)?.addEventListener("click", () => {
+            showSection(section);
+            setSidebarOpen(false);
+        });
+    });
+
+// Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
 renderAll();
