@@ -22,28 +22,34 @@ function openHandleDatabase() {
     });
 }
 
-async function saveDirectoryHandle(handle) {
+async function saveStoredHandle(handle, key) {
     const db = await openHandleDatabase();
     await new Promise((resolve, reject) => {
         const tx = db.transaction(HANDLE_STORE, "readwrite");
-        tx.objectStore(HANDLE_STORE).put(handle, "finance-folder");
+        tx.objectStore(HANDLE_STORE).put(handle, key);
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error("Could not save the file permission handle."));
     });
     db.close();
 }
 
-async function loadDirectoryHandle() {
+async function loadStoredHandle(key) {
     const db = await openHandleDatabase();
     const handle = await new Promise((resolve, reject) => {
         const tx = db.transaction(HANDLE_STORE, "readonly");
-        const request = tx.objectStore(HANDLE_STORE).get("finance-folder");
+        const request = tx.objectStore(HANDLE_STORE).get(key);
         request.onsuccess = () => resolve(request.result || null);
         request.onerror = () => reject(request.error);
     });
     db.close();
     return handle;
 }
+
+const saveDirectoryHandle = handle => saveStoredHandle(handle, "finance-folder");
+const loadDirectoryHandle = () => loadStoredHandle("finance-folder");
+const saveFileHandle = handle => saveStoredHandle(handle, "finance-file");
+const loadFileHandle = () => loadStoredHandle("finance-file");
 
 function applyFileData(data) {
     if (!data || !Array.isArray(data.transactions) ||
@@ -94,23 +100,40 @@ function persistFinanceFile() {
 async function restorePreviouslySelectedFolder() {
     try {
         directoryHandle = await loadDirectoryHandle();
-        if (!directoryHandle) {
-            setStorageStatus("Not connected — using browser storage.", false);
-            return;
+        if (directoryHandle) {
+            const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
+            if (permission === "granted") {
+                financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
+                const restored = await readFinanceFile();
+                setStorageStatus(restored
+                    ? "Connected — loaded Finance/finance-data.json"
+                    : "Connected — ready to save in Finance/finance-data.json", true);
+                return;
+            }
         }
-        const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
-        if (permission !== "granted") {
-            setStorageStatus("Finance folder found. Tap Connect Finance Folder to grant access again.", false);
-            return;
+
+        const savedFileHandle = await loadFileHandle();
+        if (savedFileHandle) {
+            const permission = await savedFileHandle.queryPermission({ mode: "readwrite" });
+            if (permission === "granted") {
+                financeFileHandle = savedFileHandle;
+                const restored = await readFinanceFile();
+                setStorageStatus(restored
+                    ? "Connected — loaded finance-data.json"
+                    : "Connected — ready to save finance-data.json", true);
+                return;
+            }
         }
-        financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
-        const restored = await readFinanceFile();
-        setStorageStatus(restored
-            ? "Connected — loaded Finance/finance-data.json"
-            : "Connected — ready to save in Finance/finance-data.json", true);
+
+        setStorageStatus(
+            directoryHandle || savedFileHandle
+                ? "Storage location remembered. Tap Connect Finance Folder to grant access again."
+                : "Not connected — using browser storage until you select a Finance folder.",
+            false
+        );
     } catch (error) {
-        console.warn("Could not restore Finance folder access:", error);
-        setStorageStatus("Could not access the saved folder. Reconnect it to continue.", false);
+        console.warn("Could not restore Finance file access:", error);
+        setStorageStatus("Could not reconnect the saved location. Tap Connect Finance Folder.", false);
         financeFileHandle = null;
     }
 }
@@ -135,6 +158,7 @@ let selectedMonth = currentMonthKey;
 
 function saveMonthlyIncomes() {
     localStorage.setItem("monthlyIncomes", JSON.stringify(monthlyIncomes));
+    persistFinanceFile();
 }
 
 function getTransactionsForMonth(month) {
@@ -163,10 +187,6 @@ function saveToStorage() {
 const dashboardSection = document.getElementById("dashboardSection");
 const transactionsSection = document.getElementById("transactionsSection");
 const insightsSection = document.getElementById("insightsSection");
-
-document.getElementById("navDashboard").onclick = () => showSection("dashboard");
-document.getElementById("navTransactions").onclick = () => showSection("transactions");
-document.getElementById("navInsights").onclick = () => showSection("insights");
 
 function showSection(section) {
     dashboardSection.classList.add("hidden");
@@ -414,6 +434,9 @@ function setSidebarOpen(open) {
 menuToggle?.addEventListener("click", () => {
     setSidebarOpen(menuToggle.getAttribute("aria-expanded") !== "true");
 });
+window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) setSidebarOpen(false);
+});
 sidebarOverlay?.addEventListener("click", () => setSidebarOpen(false));
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setSidebarOpen(false);
@@ -426,48 +449,91 @@ document.addEventListener("keydown", (event) => {
         });
     });
 
-// // Local device file storage controls.
-document.getElementById("connectFolderBtn").addEventListener("click", async () => {
-    if (!("showDirectoryPicker" in window)) {
-        setStorageStatus("Folder access is not supported by this browser. Use Export Backup.", false);
-        alert("This browser does not support direct folder access. Your data remains in browser storage; use Export Backup to save a JSON copy.");
-        return;
+// Local device file storage controls.
+async function finishFileConnection(restored, storageLabel) {
+    if (restored) {
+        state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+        monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+        selectedMonth = currentMonthKey;
+        syncIncomeEditor();
+        renderAll();
+    } else {
+        await writeFinanceFile();
     }
+    setStorageStatus("Connected — " + storageLabel, true);
+    alert(restored
+        ? "Your saved finance data has been loaded."
+        : "Your existing dashboard data has been saved to the selected location.");
+}
+
+document.getElementById("connectFolderBtn").addEventListener("click", async () => {
     try {
-        directoryHandle = await window.showDirectoryPicker({ id: "finance-dashboard-folder", mode: "readwrite" });
-        const permission = await directoryHandle.requestPermission({ mode: "readwrite" });
-        if (permission !== "granted") throw new Error("Write permission was not granted.");
-        financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
-        const restored = await readFinanceFile();
-        if (restored) {
-            state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-            monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
-            selectedMonth = currentMonthKey;
-            syncIncomeEditor();
-            renderAll();
-        } else {
-            await writeFinanceFile();
+        if (!window.isSecureContext) {
+            throw new Error("Direct file access requires a secure HTTPS connection. Open the deployed HTTPS dashboard.");
         }
-        await saveDirectoryHandle(directoryHandle);
-        setStorageStatus("Connected — Finance/finance-data.json", true);
-        alert(restored ? "Finance folder connected. Existing data was loaded from finance-data.json." : "Finance folder connected. Existing dashboard data was saved to finance-data.json.");
+
+        if ("showDirectoryPicker" in window) {
+            // The picker itself requests read/write access. Do not trigger a second prompt here.
+            directoryHandle = await window.showDirectoryPicker({
+                id: "finance-dashboard-folder",
+                mode: "readwrite"
+            });
+            financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
+            await saveDirectoryHandle(directoryHandle);
+            const restored = await readFinanceFile();
+            await finishFileConnection(restored, "Finance/finance-data.json");
+            return;
+        }
+
+        // Some browsers expose file saving but not folder selection. Let the user
+        // choose finance-data.json inside their Finance folder as a practical fallback.
+        if ("showSaveFilePicker" in window) {
+            financeFileHandle = await window.showSaveFilePicker({
+                suggestedName: "finance-data.json",
+                types: [{
+                    description: "Finance data",
+                    accept: { "application/json": [".json"] }
+                }]
+            });
+            await saveFileHandle(financeFileHandle);
+            directoryHandle = null;
+            const restored = await readFinanceFile();
+            await finishFileConnection(restored, "finance-data.json");
+            return;
+        }
+
+        setStorageStatus("This browser cannot write directly to a selected folder. Use Export Backup.", false);
+        alert("Direct folder/file access is not supported by this browser. Your data remains available in browser storage; use Export Backup to save a JSON file.");
     } catch (error) {
         if (error.name !== "AbortError") {
-            console.error(error);
-            setStorageStatus("Folder connection failed. Browser storage remains available.", false);
-            alert("Could not connect the Finance folder: " + error.message);
+            console.error("Finance location connection failed:", error);
+            setStorageStatus("Could not connect the selected location. Browser storage is still active.", false);
+            alert("Could not connect the Finance folder/file: " + (error.message || error));
         }
     }
 });
 
 document.getElementById("saveFileNowBtn").addEventListener("click", async () => {
-    if (!financeFileHandle) { alert("Connect your Finance folder first."); return; }
-    try { await writeFinanceFile(); alert("Finance data saved to finance-data.json."); }
-    catch (error) { setStorageStatus("File save failed. Reconnect the folder and try again.", false); alert("Could not save the file: " + error.message); }
+    if (!financeFileHandle) {
+        alert("Connect your Finance folder first.");
+        return;
+    }
+    try {
+        await writeFinanceFile();
+        alert("Finance data saved successfully.");
+    } catch (error) {
+        setStorageStatus("File save failed. Reconnect the folder and try again.", false);
+        alert("Could not save the file: " + (error.message || error));
+    }
 });
 
 document.getElementById("exportBackupBtn").addEventListener("click", () => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), transactions: state.transactions, monthlyIncomes };
+    const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        transactions: state.transactions,
+        monthlyIncomes
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -476,7 +542,7 @@ document.getElementById("exportBackupBtn").addEventListener("click", () => {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
