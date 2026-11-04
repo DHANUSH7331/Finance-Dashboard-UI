@@ -502,8 +502,15 @@ document.getElementById("connectFolderBtn").addEventListener("click", async () =
             return;
         }
 
-        setStorageStatus("This browser cannot write directly to a selected folder. Use Export Backup.", false);
-        alert("Direct folder/file access is not supported by this browser. Your data remains available in browser storage; use Export Backup to save a JSON file.");
+        const folderInput = document.getElementById("financeFolderInput");
+        if ("webkitdirectory" in folderInput) {
+            setStorageStatus("Choose your Finance folder. On this browser, folder access is import-only; use Save File Now to download updates.", false);
+            folderInput.click();
+            return;
+        }
+
+        setStorageStatus("This browser cannot open a writable folder. You can import a JSON file or export a backup.", false);
+        document.getElementById("financeJsonInput").click();
     } catch (error) {
         if (error.name !== "AbortError") {
             console.error("Finance location connection failed:", error);
@@ -513,9 +520,22 @@ document.getElementById("connectFolderBtn").addEventListener("click", async () =
     }
 });
 
+function downloadJsonFile(fileName, payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
 document.getElementById("saveFileNowBtn").addEventListener("click", async () => {
     if (!financeFileHandle) {
-        alert("Connect your Finance folder first.");
+        downloadJsonFile("finance-data.json", currentFinanceData());
+        setStorageStatus("Downloaded finance-data.json. Move it into your Finance folder using your phone's Files app.", false);
         return;
     }
     try {
@@ -528,21 +548,62 @@ document.getElementById("saveFileNowBtn").addEventListener("click", async () => 
 });
 
 document.getElementById("exportBackupBtn").addEventListener("click", () => {
-    const payload = {
+    downloadJsonFile("finance-backup.json", {
         version: 1,
         exportedAt: new Date().toISOString(),
         transactions: state.transactions,
         monthlyIncomes
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "finance-backup.json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+});
+
+// Mobile browsers without writable file handles can select a folder for import.
+const financeFolderInput = document.getElementById("financeFolderInput");
+financeFolderInput.addEventListener("change", async () => {
+    const selectedFiles = Array.from(financeFolderInput.files || []);
+    const dataFile = selectedFiles.find(file => file.name.toLowerCase() === "finance-data.json");
+    if (!selectedFiles.length) return;
+
+    if (!dataFile) {
+        setStorageStatus("Folder selected, but finance-data.json was not found. Use Save File Now to create a file, then move it into this folder with your Files app.", false);
+        alert("The selected folder does not contain finance-data.json yet. Use Save File Now, then move the downloaded file into the Finance folder using your Files app.");
+        financeFolderInput.value = "";
+        return;
+    }
+
+    try {
+        const imported = JSON.parse(await dataFile.text());
+        applyFileData(imported);
+        state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+        monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+        selectedMonth = currentMonthKey;
+        syncIncomeEditor();
+        renderAll();
+        setStorageStatus("Loaded from selected Finance folder. This browser cannot auto-write back; use Save File Now after edits.", false);
+        alert("Finance data loaded. After making changes, tap Save File Now and move the downloaded finance-data.json into the Finance folder, replacing the old file.");
+    } catch (error) {
+        setStorageStatus("Could not read finance-data.json from that folder.", false);
+        alert("Could not import finance-data.json: " + (error.message || error));
+    }
+    financeFolderInput.value = "";
+});
+
+document.getElementById("financeJsonInput").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+        const imported = JSON.parse(await file.text());
+        applyFileData(imported);
+        state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+        monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+        selectedMonth = currentMonthKey;
+        syncIncomeEditor();
+        renderAll();
+        setStorageStatus("Imported JSON file. Export after edits to keep an external copy.", false);
+        alert("Finance data imported successfully.");
+    } catch (error) {
+        alert("Could not import this JSON file: " + (error.message || error));
+    }
+    event.target.value = "";
 });
 
 Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
