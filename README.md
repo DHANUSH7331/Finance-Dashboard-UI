@@ -13,8 +13,9 @@ You can deploy using GitHub Pages after uploading the repo.
 **Features**
 **Dashboard Overview**
 Total Balance, Income, Expenses summary cards
-Set a fixed starting income from the Dashboard; the value is saved in browser LocalStorage
-Available balance is calculated as fixed income minus recorded expenses
+Set and save a separate income amount for each month from the Dashboard
+Monthly income history is stored in browser LocalStorage; changing one month does not overwrite another
+Monthly balance is calculated as that month’s income minus that month’s recorded expenses
 Balance trend line chart
 Spending breakdown pie chart
 <img width="1919" height="936" alt="Screenshot 2026-04-03 132736" src="https://github.com/user-attachments/assets/a1cd66cd-c5ec-4628-97f8-95f162b5206b" />
@@ -50,7 +51,7 @@ Automatic updates based on transactions
 
 **Local Storage Persistence**
 
-All transaction data and the fixed starting income are saved in browser LocalStorage, so they remain after refresh. The fixed income can be changed from the **Set Fixed Total Income** panel on the Dashboard. Once configured, Total Income stays at that amount while Total Expenses increases with each expense, and Total Balance is calculated as fixed income minus total expenses. If no fixed income is configured, income transactions are used as the income total.
+All transactions and monthly income entries are saved in browser LocalStorage and remain after refresh. On the Dashboard, use the **Set Monthly Income** panel: choose a month, enter the income for that month, and click **Save Monthly Income**. To change income later, select that month again, enter the revised amount, and save. Each month has its own saved amount, so changing February does not change January. The summary cards show the selected month’s income, expenses, and available balance (income minus expenses). If no monthly income has been set for a month, its income transactions are used as a fallback.
 
 **Tech Stack**
 HTML5
@@ -86,7 +87,8 @@ Role-based UI simulated for demonstration
 Charts added to improve financial visualization
 Responsive layout for desktop, tablet, and mobile screens
 Mobile navigation drawer with hamburger menu
-Fixed starting income with automatically updated available balance
+Month-by-month income history with editable monthly amounts
+Monthly expense totals and available balance
 
 **Future Scope**
 Dark mode toggle
