@@ -14,7 +14,7 @@ You can deploy using GitHub Pages after uploading the repo.
 **Dashboard Overview**
 Total Balance, Income, Expenses summary cards
 Set and save a separate income amount for each month from the Dashboard
-Monthly income history is stored in browser LocalStorage; changing one month does not overwrite another
+Monthly income history is stored in the browser until a device Finance folder is connected; changing one month does not overwrite another
 Monthly balance is calculated as that month’s income minus that month’s recorded expenses
 Balance trend line chart
 Spending breakdown pie chart
@@ -49,16 +49,16 @@ Savings rate calculation
 Automatic updates based on transactions
 <img width="1919" height="949" alt="Screenshot 2026-04-03 133041" src="https://github.com/user-attachments/assets/d77a3f02-57b1-4296-9bed-7e59c3025256" />
 
-**Local Storage Persistence**
+**Local and Device File Storage**
 
-All transactions and monthly income entries are saved in browser LocalStorage and remain after refresh. On the Dashboard, use the **Set Monthly Income** panel: choose a month, enter the income for that month, and click **Save Monthly Income**. To change income later, select that month again, enter the revised amount, and save. Each month has its own saved amount, so changing February does not change January. The summary cards show the selected month’s income, expenses, and available balance (income minus expenses). If no monthly income has been set for a month, its income transactions are used as a fallback.
+By default, transactions and monthly income are saved in browser LocalStorage. On supported Chromium browsers, use **Connect Finance Folder** to choose or create a Finance folder on the device. The app then reads and automatically writes `finance-data.json` in that folder after data changes. The selected folder handle is retained in IndexedDB so the app can try to reconnect on later visits; the browser may still require permission to be granted again. Use **Save File Now** to manually retry a save, or **Export Backup** to download a portable JSON backup. If folder access is unavailable or permission is denied, the app continues using browser storage. On the Dashboard, use the **Set Monthly Income** panel: choose a month, enter the income for that month, and click **Save Monthly Income**. To change income later, select that month again, enter the revised amount, and save. Each month has its own saved amount, so changing February does not change January. The summary cards show the selected month’s income, expenses, and available balance (income minus expenses). If no monthly income has been set for a month, its income transactions are used as a fallback.
 
 **Tech Stack**
 HTML5
 CSS3 (Flexbox + Grid)
 JavaScript (ES6)  
 Chart.js (for charts)
-LocalStorage (for persistence)
+LocalStorage fallback, IndexedDB (saved folder handle), and File System Access API (device JSON file)
 
 **Project Structure**
 Finance-Dashboard/
