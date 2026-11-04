@@ -105,6 +105,13 @@ async function restorePreviouslySelectedFolder() {
             if (permission === "granted") {
                 financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
                 const restored = await readFinanceFile();
+                if (restored) {
+                    state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+                    monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+                    selectedMonth = currentMonthKey;
+                    syncIncomeEditor();
+                    renderAll();
+                }
                 setStorageStatus(restored
                     ? "Connected — loaded Finance/finance-data.json"
                     : "Connected — ready to save in Finance/finance-data.json", true);
@@ -118,6 +125,13 @@ async function restorePreviouslySelectedFolder() {
             if (permission === "granted") {
                 financeFileHandle = savedFileHandle;
                 const restored = await readFinanceFile();
+                if (restored) {
+                    state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+                    monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+                    selectedMonth = currentMonthKey;
+                    syncIncomeEditor();
+                    renderAll();
+                }
                 setStorageStatus(restored
                     ? "Connected — loaded finance-data.json"
                     : "Connected — ready to save finance-data.json", true);
@@ -138,7 +152,6 @@ async function restorePreviouslySelectedFolder() {
     }
 }
 
-await restorePreviouslySelectedFolder();
 
 const stored = JSON.parse(localStorage.getItem("transactions")) || [];
 const unique = Array.from(new Map(stored.map(t => [t.id, t])).values());
@@ -249,33 +262,34 @@ const emptyState = document.getElementById("emptyState");
 
 function renderTable(list = state.transactions) {
     tableBody.innerHTML = "";
-
-    if (list.length === 0) {
-        emptyState.classList.remove("hidden");
-        return;
-    } else {
-        emptyState.classList.add("hidden");
-    }
-
+    emptyState.classList.toggle("hidden", list.length > 0);
     list.forEach(tx => {
-        const row = `
-        <tr>
-            <td>${tx.date}</td>
-            <td>${tx.desc}</td>
-            <td>${tx.category}</td>
-            <td>${tx.type}</td>
-            <td>₹${tx.amount}</td>
-            <td><button onclick="deleteTx(${tx.id})">Delete</button></td>
-        </tr>`;
-        tableBody.innerHTML += row;
+        const row = document.createElement("tr");
+        [tx.date, tx.desc, tx.category, tx.type, "₹" + Number(tx.amount).toLocaleString("en-IN")].forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value == null ? "" : String(value);
+            row.appendChild(cell);
+        });
+        const actionCell = document.createElement("td");
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete";
+        deleteButton.dataset.deleteId = String(tx.id);
+        actionCell.appendChild(deleteButton);
+        row.appendChild(actionCell);
+        tableBody.appendChild(row);
     });
 }
 
 function deleteTx(id) {
-    state.transactions = state.transactions.filter(t => t.id !== id);
+    state.transactions = state.transactions.filter(t => String(t.id) !== String(id));
     saveToStorage();
     renderAll();
 }
+tableBody.addEventListener("click", event => {
+    const button = event.target.closest("button[data-delete-id]");
+    if (button) deleteTx(button.dataset.deleteId);
+});
 
 document.getElementById("searchInput").oninput = applyFilters;
 document.getElementById("filterType").onchange = applyFilters;
@@ -335,46 +349,93 @@ function calculateInsights() {
     document.getElementById("savingsRate").innerText = savingsRate + "%";
 }
 
-let monthlyChart, categoryChart;
+function prepareChartCanvas(canvas, height = 280) {
+    if (!canvas) return null;
+    const width = Math.max(280, Math.floor(canvas.getBoundingClientRect().width || 600));
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    canvas.style.width = "100%";
+    canvas.style.height = height + "px";
+    canvas.width = Math.floor(width * ratio);
+    canvas.height = Math.floor(height * ratio);
+    const context = canvas.getContext("2d");
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    return { context, width, height };
+}
+
+function drawBalanceChart(canvas) {
+    const surface = prepareChartCanvas(canvas);
+    if (!surface) return;
+    const { context: ctx, width, height } = surface;
+    const months = [];
+    const now = new Date();
+    for (let offset = 5; offset >= 0; offset--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+        const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+        months.push({ label: date.toLocaleDateString("en-IN", { month: "short" }), balance: getMonthlyFigures(key).balance });
+    }
+    const left = 54, right = width - 16, top = 34, bottom = height - 42;
+    const values = months.map(item => item.balance);
+    const min = Math.min(0, ...values), max = Math.max(1, ...values), range = Math.max(1, max - min);
+    ctx.fillStyle = "#111827"; ctx.font = "bold 14px Arial"; ctx.fillText("Monthly balance", 16, 20);
+    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1; ctx.fillStyle = "#6b7280"; ctx.font = "11px Arial";
+    for (let tick = 0; tick <= 4; tick++) {
+        const y = top + (bottom - top) * tick / 4;
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+        ctx.fillText("₹" + Math.round(max - range * tick / 4).toLocaleString("en-IN"), 3, y + 4);
+    }
+    const points = months.map((item, index) => ({
+        x: left + (right - left) * index / (months.length - 1),
+        y: bottom - ((item.balance - min) / range) * (bottom - top)
+    }));
+    ctx.strokeStyle = "#16a34a"; ctx.lineWidth = 3; ctx.beginPath();
+    points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+    ctx.stroke();
+    points.forEach((point, index) => {
+        ctx.fillStyle = "#16a34a"; ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#6b7280"; ctx.textAlign = "center"; ctx.fillText(months[index].label, point.x, height - 18);
+    });
+    ctx.textAlign = "start";
+}
+
+function drawCategoryChart(canvas) {
+    const surface = prepareChartCanvas(canvas);
+    if (!surface) return;
+    const { context: ctx, width, height } = surface;
+    const totals = {};
+    getTransactionsForMonth(selectedMonth).filter(tx => tx.type === "expense").forEach(tx => {
+        const category = tx.category || "Other";
+        totals[category] = (totals[category] || 0) + Number(tx.amount || 0);
+    });
+    const items = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const colors = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#0d9488"];
+    ctx.fillStyle = "#111827"; ctx.font = "bold 14px Arial"; ctx.fillText("Expense categories", 16, 20);
+    if (!items.length) {
+        ctx.fillStyle = "#6b7280"; ctx.font = "13px Arial"; ctx.textAlign = "center";
+        ctx.fillText("No expense transactions for this month yet", width / 2, height / 2);
+        ctx.textAlign = "start"; return;
+    }
+    const total = items.reduce((sum, item) => sum + item[1], 0);
+    const centerX = width * .32, centerY = height * .55, radius = Math.min(78, height * .29);
+    let angle = -Math.PI / 2;
+    items.forEach((item, index) => {
+        const slice = item[1] / total * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, angle, angle + slice);
+        ctx.closePath(); ctx.fillStyle = colors[index % colors.length]; ctx.fill(); angle += slice;
+    });
+    ctx.font = "12px Arial";
+    items.forEach((item, index) => {
+        const y = 58 + index * 31;
+        ctx.fillStyle = colors[index % colors.length]; ctx.fillRect(width * .58, y - 10, 11, 11);
+        ctx.fillStyle = "#374151";
+        const label = item[0].length > 16 ? item[0].slice(0, 15) + "…" : item[0];
+        ctx.fillText(label + " · ₹" + item[1].toLocaleString("en-IN"), width * .58 + 18, y);
+    });
+}
 
 function renderCharts() {
-    const ctx1 = document.getElementById("monthlyChart");
-    const ctx2 = document.getElementById("categoryChart");
-
-    if (monthlyChart) monthlyChart.destroy();
-    if (categoryChart) categoryChart.destroy();
-
-    monthlyChart = new Chart(ctx1, {
-        type: "line",
-        data: {
-            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-            datasets: [{
-                label: "Balance Trend",
-                data: [5000, 8000, 6000, 9000, 7000, 10000],
-                borderColor: "#4ade80",
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-
-    categoryChart = new Chart(ctx2, {
-        type: "pie",
-        data: {
-            labels: ["Food", "Shopping", "Travel"],
-            datasets: [{
-                data: [3000, 2000, 1500],
-                backgroundColor: ["#f87171", "#60a5fa", "#34d399"]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
+    drawBalanceChart(document.getElementById("monthlyChart"));
+    drawCategoryChart(document.getElementById("categoryChart"));
 }
 
 function renderAll() {
@@ -606,6 +667,13 @@ document.getElementById("financeJsonInput").addEventListener("change", async (ev
     event.target.value = "";
 });
 
-Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
+// Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
 renderAll();
+restorePreviouslySelectedFolder().catch(error => {
+    console.warn("Finance file restore skipped:", error);
+    setStorageStatus("Using browser storage. Reconnect your Finance folder when needed.", false);
+});
+window.addEventListener("resize", () => {
+    if (dashboardSection && !dashboardSection.classList.contains("hidden")) renderCharts();
+});
 })();
