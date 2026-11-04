@@ -248,3 +248,19 @@ tr:hover{
 /* Monthly income history controls */
 #summaryMonthLabel { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; color: #6b7280; }
 .income-settings-controls input[type="month"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+
+
+/* Local Finance folder storage controls */
+.storage-settings { margin-top: 20px; }
+.storage-settings p { color: #6b7280; margin: 8px 0 14px; line-height: 1.5; }
+.storage-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.storage-actions button { border: 0; border-radius: 6px; padding: 11px 15px; background: #1f2937; color: #fff; cursor: pointer; }
+.storage-actions button:first-child { background: #2563eb; }
+.storage-actions button:hover { filter: brightness(.94); }
+.storage-settings .storage-status { margin: 12px 0 0; font-size: 13px; }
+.storage-status[data-connected="true"] { color: #15803d; }
+.storage-status[data-connected="false"] { color: #92400e; }
+@media (max-width: 700px) {
+    .storage-actions { flex-direction: column; }
+    .storage-actions button { width: 100%; min-height: 44px; }
+}
