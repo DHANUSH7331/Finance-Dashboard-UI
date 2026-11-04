@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <h2>Finance</h2>
     <nav>
         <button id="navDashboard">Dashboard</button>
@@ -23,7 +23,14 @@
         <button id="navInsights">Insights</button>
     </nav>
 </aside>
+<button class="sidebar-overlay" id="sidebarOverlay" type="button" aria-label="Close navigation" hidden></button>
 <main class="content">
+    <header class="mobile-header">
+        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+        <span class="mobile-header-title">Finance</span>
+    </header>
     <section id="dashboardSection">
         <h1>Dashboard Overview</h1>
         <div class="cards">
