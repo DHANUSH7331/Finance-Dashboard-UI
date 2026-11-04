@@ -3,140 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Dashboard</title>
-    <meta name="theme-color" content="#0b1220">
-    <meta name="description" content="Personal finance dashboard to track income, expenses and transactions.">
+    <title>Vesper — Finance Dashboard</title>
+    <meta name="theme-color" content="#090d19">
+    <meta name="description" content="A modern personal finance dashboard to track monthly income, expenses and transactions.">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/finance-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./icons/finance-icon.svg">
     <link rel="stylesheet" href="styles.css">
-
 </head>
 <body>
-<aside class="sidebar" id="sidebar" aria-label="Main navigation">
-    <h2>Finance</h2>
-    <nav>
-        <button id="navDashboard">Dashboard</button>
-        <button id="navTransactions">Transactions</button>
-        <button id="navInsights">Insights</button>
-    </nav>
-</aside>
-<button class="sidebar-overlay" id="sidebarOverlay" type="button" aria-label="Close navigation" hidden></button>
-<main class="content">
-    <header class="mobile-header">
-        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
-            <span></span><span></span><span></span>
-        </button>
-        <span class="mobile-header-title">Finance</span>
-    </header>
-    <section id="dashboardSection">
-        <h1>Dashboard Overview</h1>
-        <div class="cards">
-            <div class="card">
-                <h3>Total Balance <span id="summaryMonthLabel"></span></h3>
-                <h2 id="totalBalance">₹0</h2>
-            </div>
-            <div class="card">
-                <h3>Total Income</h3>
-                <h2 id="totalIncome">₹0</h2>
-            </div>
-            <div class="card">
-                <h3>Total Expenses</h3>
-                <h2 id="totalExpense">₹0</h2>
-            </div>
-        </div>
-        <div class="card income-settings">
-            <h3>Set Monthly Income</h3>
-            <p>Save an income amount for each month. Updating a new month will not change previous months. Monthly balance = income − expenses.</p>
-            <div class="income-settings-controls">
-                <label for="incomeMonthInput">Month</label>
-                <input type="month" id="incomeMonthInput">
-                <label for="monthlyIncomeInput">Income for this month (₹)</label>
-                <input type="number" id="monthlyIncomeInput" min="1" step="0.01" placeholder="Enter monthly income">
-                <button id="saveIncomeBtn" type="button">Save Monthly Income</button>
-            </div>
-        </div>
-        <div class="card storage-settings">
-            <h3>Local Finance File</h3>
-            <p>On supported desktop browsers, connect a Finance folder for automatic file updates. On mobile browsers without writable folder access, select the folder to import finance-data.json, then use Save File Now after edits and move the downloaded file into Finance with your Files app.</p>
-            <div class="storage-actions">
-                <button id="connectFolderBtn" type="button">Choose Finance Folder / Import</button>
-                <button id="saveFileNowBtn" type="button">Save File Now</button>
-                <button id="exportBackupBtn" type="button">Export Backup</button>
-            </div>
-            <input id="financeFolderInput" type="file" webkitdirectory directory multiple hidden aria-label="Select Finance folder">
-            <input id="financeJsonInput" type="file" accept=".json,application/json" hidden aria-label="Import finance JSON file">
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <a class="brand" href="./" aria-label="Vesper Finance home">
+            <span class="brand-mark">
+                <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M7 24.5 14.1 17l5.1 4.4L29 10.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M22.5 10.5H29V17" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="brand-copy"><strong>vesper</strong><small>PERSONAL FINANCE</small></span>
+        </a>
 
-            <p id="storageStatus" class="storage-status" role="status">Checking local storage options…</p>
+        <div class="nav-caption">WORKSPACE</div>
+        <nav class="primary-nav">
+            <button id="navDashboard" class="nav-item active" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg>
+                <span>Overview</span><i></i>
+            </button>
+            <button id="navTransactions" class="nav-item" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>
+                <span>Transactions</span>
+            </button>
+            <button id="navInsights" class="nav-item" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h17"/><path d="m7 15 4-4 3 2 6-7"/><path d="M16 6h4v4"/></svg>
+                <span>Insights</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-note">
+            <span class="note-orb"></span>
+            <div><strong>Your space, your pace</strong><small>Personal finance overview</small></div>
         </div>
-        <div class="charts">
-            <canvas id="monthlyChart"></canvas>
-            <canvas id="categoryChart"></canvas>
-        </div>
-    </section>
-    <section id="transactionsSection" class="hidden">
-        <h1>Transactions</h1>
-        <div id="transactionForm" class="card">
-            <h3>Add Transaction</h3>
-            <input type="text" id="descInput" placeholder="Description">
-            <input type="number" id="amountInput" placeholder="Amount">
-            <input type="date" id="dateInput">
-            <input type="text" id="categoryInput" placeholder="Category">
-            <select id="typeInput">
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-            </select>
-            <button id="addBtn">Add Transaction</button>
-        </div>
-        <div class="filters">
-            <input type="text" id="searchInput" placeholder="Search...">
-            <select id="filterType">
-                <option value="all">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-            </select>
-            <select id="sortBy">
-                <option value="date">Sort by Date</option>
-                <option value="amount">Sort by Amount</option>
-            </select>
-        </div>
-        <div id="emptyState" class="hidden">No transactions yet</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="transactionTable"></tbody>
-        </table>
-    </section>
-    <section id="insightsSection" class="hidden">
-        <h1>Insights</h1>
-        <div class="cards">
-            <div class="card">
-                <h3>Highest Spending Category</h3>
-                <p id="topCategory">--</p>
-            </div>
-            <div class="card">
-                <h3>Monthly Comparison</h3>
-                <p id="monthlyComparison">--</p>
-            </div>
-            <div class="card">
-                <h3>Average Monthly Expense</h3>
-                <p id="avgExpense">--</p>
-            </div>
-            <div class="card">
-                <h3>Savings Rate</h3>
-                <p id="savingsRate">--</p>
+        <div class="sidebar-footer"><span class="status-dot"></span> LOCAL WORKSPACE <span class="version-label">V1.0</span></div>
+    </aside>
+
+    <button class="sidebar-overlay" id="sidebarOverlay" type="button" aria-label="Close navigation" hidden></button>
+
+    <main class="content">
+        <header class="mobile-header">
+            <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <a class="mobile-brand" href="./"><span class="brand-mark small"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="7 24.5 14.1 17l5.1 4.4L29 10.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span> vesper</a>
+            <span class="mobile-live"><i></i> LIVE</span>
+        </header>
+
+        <div class="topbar">
+            <div class="breadcrumbs"><span>PERSONAL SPACE</span><b>/</b><strong id="currentPageLabel">OVERVIEW</strong></div>
+            <div class="topbar-right">
+                <span class="topbar-date" id="currentDateLabel"></span>
+                <span class="topbar-avatar">S</span>
             </div>
         </div>
-    </section>
-</main>
+
+        <section id="dashboardSection" class="page-section">
+            <div class="welcome-row">
+                <div>
+                    <div class="section-kicker"><span class="kicker-line"></span> YOUR FINANCIAL PICTURE</div>
+                    <h1>Good things are <span>adding up.</span></h1>
+                    <p class="page-subtitle">A clearer view of your money, all in one place.</p>
+                </div>
+                <div class="date-pill"><span class="date-pulse"></span><span id="dashboardDateLabel">YOUR OVERVIEW</span></div>
+            </div>
+
+            <div class="overview-grid">
+                <article class="balance-card reveal">
+                    <div class="balance-glow glow-one"></div><div class="balance-glow glow-two"></div>
+                    <div class="balance-card-top">
+                        <div class="balance-label"><span class="balance-icon">↗</span> TOTAL BALANCE</div>
+                        <span class="balance-period">MONTHLY SUMMARY <b id="summaryMonthLabel"></b></span>
+                    </div>
+                    <div class="balance-value" id="totalBalance">₹0</div>
+                    <div class="balance-bottom">
+                        <span class="balance-caption">Available balance for the selected month</span>
+                        <span class="balance-trend"><span>✦</span> Stay on track</span>
+                    </div>
+                    <svg class="balance-sparkline" viewBox="0 0 440 90" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sparkFade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#b7a5ff" stop-opacity=".35"/><stop offset="1" stop-color="#b7a5ff" stop-opacity="0"/></linearGradient></defs><path d="M0 72 C35 68 42 52 70 57 S110 72 139 48 S182 43 205 52 S243 25 270 34 S311 47 339 22 S382 35 405 14 L440 7 L440 90 L0 90Z" fill="url(#sparkFade)"/><path d="M0 72 C35 68 42 52 70 57 S110 72 139 48 S182 43 205 52 S243 25 270 34 S311 47 339 22 S382 35 405 14 L440 7" fill="none" stroke="#b9a8ff" stroke-width="2.4" stroke-linecap="round"/></svg>
+                </article>
+
+                <article class="metric-card income-metric reveal">
+                    <div class="metric-top"><span class="metric-icon income-icon">↙</span><span class="metric-tag">THIS MONTH</span></div>
+                    <span class="metric-label">Total income</span>
+                    <strong class="metric-value" id="totalIncome">₹0</strong>
+                    <div class="metric-foot"><span class="metric-indicator positive"></span> Money coming in</div>
+                    <div class="metric-decoration income-decoration"></div>
+                </article>
+
+                <article class="metric-card expense-metric reveal">
+                    <div class="metric-top"><span class="metric-icon expense-icon">↗</span><span class="metric-tag">THIS MONTH</span></div>
+                    <span class="metric-label">Total expenses</span>
+                    <strong class="metric-value" id="totalExpense">₹0</strong>
+                    <div class="metric-foot"><span class="metric-indicator negative"></span> Money going out</div>
+                    <div class="metric-decoration expense-decoration"></div>
+                </article>
+            </div>
+
+            <div class="analytics-heading">
+                <div><div class="section-kicker"><span class="kicker-line"></span> THE BIGGER PICTURE</div><h2>Your money at a glance</h2></div>
+                <span class="analytics-caption">Updated with your latest entries</span>
+            </div>
+            <div class="charts">
+                <article class="chart-card reveal">
+                    <div class="chart-card-head"><div><span class="chart-eyebrow">CASH FLOW</span><h3>Balance trend</h3></div><span class="chart-chip"><i></i> Last 6 months</span></div>
+                    <canvas id="monthlyChart" aria-label="Monthly balance trend chart"></canvas>
+                </article>
+                <article class="chart-card reveal">
+                    <div class="chart-card-head"><div><span class="chart-eyebrow">WHERE IT GOES</span><h3>Spending breakdown</h3></div><span class="chart-chip violet-chip"><i></i> By category</span></div>
+                    <canvas id="categoryChart" aria-label="Expense category chart"></canvas>
+                </article>
+            </div>
+
+            <div class="settings-grid">
+                <article class="settings-card reveal">
+                    <div class="settings-heading"><span class="settings-icon violet-setting">₹</span><div><span class="chart-eyebrow">PLAN AHEAD</span><h3>Monthly income</h3></div></div>
+                    <p class="settings-description">Give each month its own income target. Updating one month never changes your history.</p>
+                    <div class="income-settings-controls">
+                        <label for="incomeMonthInput">MONTH</label>
+                        <input type="month" id="incomeMonthInput">
+                        <label for="monthlyIncomeInput">INCOME AMOUNT (₹)</label>
+                        <input type="number" id="monthlyIncomeInput" min="1" step="0.01" placeholder="e.g. 45000">
+                        <button id="saveIncomeBtn" type="button" class="primary-button">Save monthly income <span>↗</span></button>
+                    </div>
+                </article>
+
+                <article class="settings-card storage-settings reveal">
+                    <div class="settings-heading"><span class="settings-icon storage-setting">⌁</span><div><span class="chart-eyebrow">YOUR DATA</span><h3>Local finance file</h3></div></div>
+                    <p class="settings-description">Keep a portable copy of your transactions and monthly income on your device.</p>
+                    <div class="storage-actions">
+                        <button id="connectFolderBtn" type="button" class="secondary-button">Choose folder / import <span>↗</span></button>
+                        <button id="saveFileNowBtn" type="button" class="secondary-button">Save file now <span>↓</span></button>
+                        <button id="exportBackupBtn" type="button" class="text-button">Export backup</button>
+                    </div>
+                    <input id="financeFolderInput" type="file" webkitdirectory directory multiple hidden aria-label="Select Finance folder">
+                    <input id="financeJsonInput" type="file" accept=".json,application/json" hidden aria-label="Import finance JSON file">
+                    <p id="storageStatus" class="storage-status" role="status">Checking local storage options…</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="transactionsSection" class="page-section hidden">
+            <div class="welcome-row page-title-row">
+                <div><div class="section-kicker"><span class="kicker-line"></span> YOUR ACTIVITY</div><h1>Every move, <span>accounted for.</span></h1><p class="page-subtitle">Track, review and manage your money with ease.</p></div>
+                <div class="date-pill"><span class="date-pulse"></span> TRANSACTION LOG</div>
+            </div>
+
+            <article id="transactionForm" class="transaction-form-card reveal">
+                <div class="form-card-heading"><div><span class="chart-eyebrow">NEW ENTRY</span><h3>Add a transaction</h3><p>Capture the details while they're fresh.</p></div><span class="form-plus">＋</span></div>
+                <div class="transaction-fields">
+                    <label class="field-group"><span>DESCRIPTION</span><input type="text" id="descInput" placeholder="e.g. Grocery shopping"></label>
+                    <label class="field-group"><span>AMOUNT (₹)</span><input type="number" id="amountInput" placeholder="0.00" min="0.01" step="0.01"></label>
+                    <label class="field-group"><span>DATE</span><input type="date" id="dateInput"></label>
+                    <label class="field-group"><span>CATEGORY</span><input type="text" id="categoryInput" placeholder="e.g. Food"></label>
+                    <label class="field-group"><span>TYPE</span><select id="typeInput"><option value="income">Income</option><option value="expense">Expense</option></select></label>
+                    <button id="addBtn" type="button" class="primary-button add-button">Add transaction <span>＋</span></button>
+                </div>
+            </article>
+
+            <div class="transaction-list-heading"><div><span class="chart-eyebrow">ALL ACTIVITY</span><h2>Recent transactions</h2></div><span class="list-count" id="transactionCount">0 RECORDS</span></div>
+            <div class="transaction-toolbar">
+                <label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input type="search" id="searchInput" placeholder="Search transactions..."></label>
+                <select id="filterType" aria-label="Filter by transaction type"><option value="all">All types</option><option value="income">Income</option><option value="expense">Expense</option></select>
+                <select id="sortBy" aria-label="Sort transactions"><option value="date">Newest first</option><option value="amount">Amount: high to low</option></select>
+            </div>
+            <div id="emptyState" class="empty-state hidden"><span>⌁</span><strong>No transactions yet</strong><p>Your new entries will appear here.</p></div>
+            <div class="table-card"><div class="table-scroll"><table>
+                <thead><tr><th>DATE</th><th>DESCRIPTION</th><th>CATEGORY</th><th>TYPE</th><th>AMOUNT</th><th>ACTION</th></tr></thead>
+                <tbody id="transactionTable"></tbody>
+            </table></div></div>
+        </section>
+
+        <section id="insightsSection" class="page-section hidden">
+            <div class="welcome-row page-title-row">
+                <div><div class="section-kicker"><span class="kicker-line"></span> PATTERNS & PERSPECTIVE</div><h1>Know your <span>numbers.</span></h1><p class="page-subtitle">Small patterns can lead to smarter decisions.</p></div>
+                <div class="date-pill"><span class="date-pulse"></span> MONTHLY INSIGHTS</div>
+            </div>
+            <div class="insights-grid">
+                <article class="insight-card reveal"><span class="insight-icon insight-purple">✳</span><span class="metric-label">Highest spending category</span><strong id="topCategory">--</strong><small>Where most of your expenses go</small></article>
+                <article class="insight-card reveal"><span class="insight-icon insight-blue">↗</span><span class="metric-label">Monthly comparison</span><strong id="monthlyComparison">--</strong><small>Compared with your previous month</small></article>
+                <article class="insight-card reveal"><span class="insight-icon insight-green">◷</span><span class="metric-label">Average monthly expense</span><strong id="avgExpense">--</strong><small>Your average spending pace</small></article>
+                <article class="insight-card reveal"><span class="insight-icon insight-pink">％</span><span class="metric-label">Savings rate</span><strong id="savingsRate">--</strong><small>Income retained after expenses</small></article>
+            </div>
+            <article class="chart-card insight-chart-card reveal"><div class="chart-card-head"><div><span class="chart-eyebrow">MONTHLY OVERVIEW</span><h3>Your spending picture</h3></div><span class="chart-chip"><i></i> Selected month</span></div><canvas id="insightsChart" aria-label="Monthly spending chart"></canvas></article>
+        </section>
+
+        <footer class="app-footer"><span>VESPER FINANCE</span><span>Built for a clearer view of your money <b>✦</b></span></footer>
+    </main>
+</div>
+
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
