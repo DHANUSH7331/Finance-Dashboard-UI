@@ -243,3 +243,8 @@ tr:hover{
     .income-settings-controls { align-items: stretch; flex-direction: column; }
     .income-settings-controls input, .income-settings-controls button { width: 100%; min-height: 44px; }
 }
+
+
+/* Monthly income history controls */
+#summaryMonthLabel { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; color: #6b7280; }
+.income-settings-controls input[type="month"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
