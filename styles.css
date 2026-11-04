@@ -149,12 +149,50 @@ tr:hover{
     }
 }
 
-@media(max-width:700px){
-    .sidebar{
-        display:none;
-    }
 
-    .content{
-        margin-left:0;
+/* Responsive navigation and dashboard layout */
+@media (max-width: 700px) {
+    body { display: block; }
+    .sidebar {
+        display: block;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        height: auto;
+        padding: 14px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.18);
     }
+    .sidebar h2 { margin: 0 0 12px; font-size: 21px; }
+    .sidebar nav {
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .sidebar nav button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 10px 13px;
+    }
+    .content {
+        width: 100%;
+        margin: 0;
+        padding: 18px 14px 28px;
+    }
+    .content h1 { font-size: 24px; }
+    .cards { grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+    .charts { grid-template-columns: 1fr; gap: 14px; margin-top: 18px; }
+    .charts canvas { width: 100% !important; max-height: 280px; padding: 12px; }
+    #transactionForm { display: flex; flex-direction: column; align-items: stretch; }
+    #transactionForm input, #transactionForm select, #addBtn { width: 100%; min-height: 44px; }
+    .filters { display: flex; flex-direction: column; gap: 9px; }
+    .filters input, .filters select { width: 100%; min-height: 44px; }
+    #transactionsSection { overflow-x: auto; }
+    #transactionsSection table { min-width: 650px; }
+}
+@media (min-width: 701px) and (max-width: 900px) {
+    .content { padding: 22px; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
