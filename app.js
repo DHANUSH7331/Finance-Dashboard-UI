@@ -2,10 +2,7 @@ const stored = JSON.parse(localStorage.getItem("transactions")) || [];
 const unique = Array.from(new Map(stored.map(t => [t.id, t])).values());
 localStorage.setItem("transactions", JSON.stringify(unique));
 
-let state = {
-    role: "viewer",
-    transactions: unique
-};
+let state = { transactions: unique };
 
 function saveToStorage() {
     localStorage.setItem("transactions", JSON.stringify(state.transactions));
@@ -27,19 +24,6 @@ function showSection(section) {
     if (section === "dashboard") dashboardSection.classList.remove("hidden");
     if (section === "transactions") transactionsSection.classList.remove("hidden");
     if (section === "insights") insightsSection.classList.remove("hidden");
-}
-
-const roleSelect = document.getElementById("roleSelect");
-const transactionForm = document.getElementById("transactionForm");
-
-roleSelect.onchange = () => {
-    state.role = roleSelect.value;
-    applyRoleUI();
-    renderTable();
-};
-
-function applyRoleUI() {
-    transactionForm.style.display = state.role === "viewer" ? "none" : "flex";
 }
 
 document.getElementById("addBtn").onclick = () => {
@@ -83,7 +67,8 @@ document.getElementById("addBtn").onclick = () => {
 
     state.transactions.push(newTransaction);
     saveToStorage();
-    document.getElementById("transactionForm").reset();
+    ["descInput", "amountInput", "dateInput", "categoryInput"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("typeInput").value = "income";
     renderAll();
 };
 
@@ -108,7 +93,7 @@ function renderTable(list = state.transactions) {
             <td>${tx.category}</td>
             <td>${tx.type}</td>
             <td>₹${tx.amount}</td>
-            <td>${state.role === "admin" ? `<button onclick="deleteTx(${tx.id})">Delete</button>` : ""}</td>
+            <td><button onclick="deleteTx(${tx.id})">Delete</button></td>
         </tr>`;
         tableBody.innerHTML += row;
     });
