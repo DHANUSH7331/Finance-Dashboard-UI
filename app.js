@@ -135,14 +135,16 @@ function applyFilters() {
 }
 
 function calculateSummary() {
-    let income = 0;
+    let transactionIncome = 0;
     let expense = 0;
 
     state.transactions.forEach(t => {
-        if (t.type === "income") income += t.amount;
+        if (t.type === "income") transactionIncome += t.amount;
         else if (t.type === "expense") expense += t.amount;
     });
 
+    // Use the configured fixed income as the starting income when one is set.
+    const income = fixedIncome > 0 ? fixedIncome : transactionIncome;
     const balance = income - expense;
 
     document.getElementById("totalIncome").innerText = "₹" + income;
@@ -158,7 +160,7 @@ function calculateInsights() {
     }
 
     const categories = {};
-    let income = 0;
+    let transactionIncome = 0;
     let expense = 0;
 
     state.transactions.forEach(t => {
@@ -166,9 +168,11 @@ function calculateInsights() {
             categories[t.category] = (categories[t.category] || 0) + t.amount;
             expense += t.amount;
         } else if (t.type === "income") {
-            income += t.amount;
+            transactionIncome += t.amount;
         }
     });
+
+    const income = fixedIncome > 0 ? fixedIncome : transactionIncome;
 
     let topCategory = "-";
     if (Object.keys(categories).length > 0) {
