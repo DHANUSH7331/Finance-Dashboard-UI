@@ -1,13 +1,13 @@
 {
   "id": "./",
-  "name": "Finance Dashboard",
-  "short_name": "Finance",
+  "name": "Vesper — Finance Dashboard",
+  "short_name": "Vesper",
   "description": "Personal finance dashboard to track income, expenses and transactions.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b1220",
-  "theme_color": "#0b1220",
+  "background_color": "#090d19",
+  "theme_color": "#090d19",
   "icons": [
     {
       "src": "./icons/finance-icon.svg",
