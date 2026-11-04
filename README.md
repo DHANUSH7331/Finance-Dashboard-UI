@@ -13,6 +13,8 @@ You can deploy using GitHub Pages after uploading the repo.
 **Features**
 **Dashboard Overview**
 Total Balance, Income, Expenses summary cards
+Set a fixed starting income from the Dashboard; the value is saved in browser LocalStorage
+Available balance is calculated as fixed income minus recorded expenses
 Balance trend line chart
 Spending breakdown pie chart
 <img width="1919" height="936" alt="Screenshot 2026-04-03 132736" src="https://github.com/user-attachments/assets/a1cd66cd-c5ec-4628-97f8-95f162b5206b" />
@@ -48,7 +50,7 @@ Automatic updates based on transactions
 
 **Local Storage Persistence**
 
-All data is saved in browser storage so it remains after refresh.
+All transaction data and the fixed starting income are saved in browser LocalStorage, so they remain after refresh. The fixed income can be changed from the **Set Fixed Total Income** panel on the Dashboard. Once configured, Total Income stays at that amount while Total Expenses increases with each expense, and Total Balance is calculated as fixed income minus total expenses. If no fixed income is configured, income transactions are used as the income total.
 
 **Tech Stack**
 HTML5
@@ -82,7 +84,9 @@ State managed using a central JavaScript object
 LocalStorage used instead of backend for persistence
 Role-based UI simulated for demonstration
 Charts added to improve financial visualization
-Responsive layout for desktop and tablet screens
+Responsive layout for desktop, tablet, and mobile screens
+Mobile navigation drawer with hamburger menu
+Fixed starting income with automatically updated available balance
 
 **Future Scope**
 Dark mode toggle
