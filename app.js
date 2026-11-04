@@ -3,6 +3,7 @@ const unique = Array.from(new Map(stored.map(t => [t.id, t])).values());
 localStorage.setItem("transactions", JSON.stringify(unique));
 
 let state = { transactions: unique };
+let fixedIncome = Number(localStorage.getItem("fixedIncome")) || 0;
 
 function saveToStorage() {
     localStorage.setItem("transactions", JSON.stringify(state.transactions));
@@ -230,6 +231,25 @@ function renderAll() {
     calculateInsights();
     renderCharts();
     applyFilters();
+}
+
+
+// Fixed starting income (saved independently from transaction history)
+const fixedIncomeInput = document.getElementById("fixedIncomeInput");
+const saveIncomeBtn = document.getElementById("saveIncomeBtn");
+if (fixedIncomeInput && saveIncomeBtn) {
+    fixedIncomeInput.value = fixedIncome || "";
+    saveIncomeBtn.addEventListener("click", () => {
+        const amount = Number(fixedIncomeInput.value);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            alert("Enter a valid income amount greater than 0");
+            return;
+        }
+        fixedIncome = amount;
+        localStorage.setItem("fixedIncome", String(fixedIncome));
+        renderAll();
+        alert("Fixed total income saved");
+    });
 }
 
 // Mobile navigation drawer
