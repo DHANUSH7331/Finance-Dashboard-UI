@@ -98,72 +98,14 @@ function persistFinanceFile() {
 }
 
 async function restorePreviouslySelectedFolder() {
-    try {
-        // Android browsers generally do not expose a persistent writable folder picker.
-        // Keep the dashboard fully usable with automatic origin storage instead of
-        // repeatedly asking the user to reconnect a folder they cannot persist.
-        if (!("showDirectoryPicker" in window) && !("showSaveFilePicker" in window)) {
-            setStorageStatus(
-                "Automatically saved on this device. Android does not allow this browser app to keep permanent access to a phone folder. Use Export backup for a separate file copy.",
-                true
-            );
-            return;
-        }
-        directoryHandle = await loadDirectoryHandle();
-        if (directoryHandle) {
-            const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
-            if (permission === "granted") {
-                financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
-                const restored = await readFinanceFile();
-                if (restored) {
-                    state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-                    monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
-                    selectedMonth = currentMonthKey;
-                    syncIncomeEditor();
-                    renderAll();
-                }
-                setStorageStatus(restored
-                    ? "Connected — loaded Finance/finance-data.json"
-                    : "Connected — ready to save in Finance/finance-data.json", true);
-                return;
-            }
-        }
-
-        const savedFileHandle = await loadFileHandle();
-        if (savedFileHandle) {
-            const permission = await savedFileHandle.queryPermission({ mode: "readwrite" });
-            if (permission === "granted") {
-                financeFileHandle = savedFileHandle;
-                const restored = await readFinanceFile();
-                if (restored) {
-                    state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-                    monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
-                    selectedMonth = currentMonthKey;
-                    syncIncomeEditor();
-                    renderAll();
-                }
-                setStorageStatus(restored
-                    ? "Connected — loaded finance-data.json"
-                    : "Connected — ready to save finance-data.json", true);
-                return;
-            }
-        }
-
-        // The browser retained the folder/file handle but did not retain write permission.
-        // Do not present this as a reconnect task on Android: browser storage remains the
-        // automatic working copy and external file access is only available on demand.
-        setStorageStatus(
-            "Saved automatically in this app on this device. Android requires a fresh user approval for phone-folder access; use Export backup only when you need a separate file copy.",
-            true
-        );
-    } catch (error) {
-        console.warn("Could not restore Finance file access:", error);
-        setStorageStatus(
-            "Saved automatically in this app on this device. Phone-folder access is not currently available; your dashboard data remains in app storage.",
-            true
-        );
-        financeFileHandle = null;
-    }
+    // The app's own browser storage is the reliable automatic storage on Android.
+    // Never attempt to restore a phone-folder permission silently at startup.
+    financeFileHandle = null;
+    directoryHandle = null;
+    setStorageStatus(
+        "Automatically saved in this app on this device. Phone-folder export is optional.",
+        true
+    );
 }
 
 
@@ -775,13 +717,7 @@ if (navigator.storage && navigator.storage.persist) {
 
 // Local browser storage is the automatic, persistent working copy.
 renderAll();
-restorePreviouslySelectedFolder().catch(error => {
-    console.warn("External finance file access is unavailable; using app storage:", error);
-    setStorageStatus(
-        "Saved automatically in this app on this device. External folder access is optional.",
-        true
-    );
-});
+restorePreviouslySelectedFolder();
 window.addEventListener("resize", () => {
     if (dashboardSection && !dashboardSection.classList.contains("hidden")) renderCharts();
 });
