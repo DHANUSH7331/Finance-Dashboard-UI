@@ -426,6 +426,59 @@ document.addEventListener("keydown", (event) => {
         });
     });
 
-// Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
+// // Local device file storage controls.
+document.getElementById("connectFolderBtn").addEventListener("click", async () => {
+    if (!("showDirectoryPicker" in window)) {
+        setStorageStatus("Folder access is not supported by this browser. Use Export Backup.", false);
+        alert("This browser does not support direct folder access. Your data remains in browser storage; use Export Backup to save a JSON copy.");
+        return;
+    }
+    try {
+        directoryHandle = await window.showDirectoryPicker({ id: "finance-dashboard-folder", mode: "readwrite" });
+        const permission = await directoryHandle.requestPermission({ mode: "readwrite" });
+        if (permission !== "granted") throw new Error("Write permission was not granted.");
+        financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
+        const restored = await readFinanceFile();
+        if (restored) {
+            state.transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+            monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+            selectedMonth = currentMonthKey;
+            syncIncomeEditor();
+            renderAll();
+        } else {
+            await writeFinanceFile();
+        }
+        await saveDirectoryHandle(directoryHandle);
+        setStorageStatus("Connected — Finance/finance-data.json", true);
+        alert(restored ? "Finance folder connected. Existing data was loaded from finance-data.json." : "Finance folder connected. Existing dashboard data was saved to finance-data.json.");
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            console.error(error);
+            setStorageStatus("Folder connection failed. Browser storage remains available.", false);
+            alert("Could not connect the Finance folder: " + error.message);
+        }
+    }
+});
+
+document.getElementById("saveFileNowBtn").addEventListener("click", async () => {
+    if (!financeFileHandle) { alert("Connect your Finance folder first."); return; }
+    try { await writeFinanceFile(); alert("Finance data saved to finance-data.json."); }
+    catch (error) { setStorageStatus("File save failed. Reconnect the folder and try again.", false); alert("Could not save the file: " + error.message); }
+});
+
+document.getElementById("exportBackupBtn").addEventListener("click", () => {
+    const payload = { version: 1, exportedAt: new Date().toISOString(), transactions: state.transactions, monthlyIncomes };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "finance-backup.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+});
+
+Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
 renderAll();
 })();
