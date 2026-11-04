@@ -149,15 +149,19 @@ async function restorePreviouslySelectedFolder() {
             }
         }
 
+        // The browser retained the folder/file handle but did not retain write permission.
+        // Do not present this as a reconnect task on Android: browser storage remains the
+        // automatic working copy and external file access is only available on demand.
         setStorageStatus(
-            directoryHandle || savedFileHandle
-                ? "Storage location remembered. Tap Connect Finance Folder to grant access again."
-                : "Not connected — using browser storage until you select a Finance folder.",
-            false
+            "Saved automatically in this app on this device. Android requires a fresh user approval for phone-folder access; use Export backup only when you need a separate file copy.",
+            true
         );
     } catch (error) {
         console.warn("Could not restore Finance file access:", error);
-        setStorageStatus("Could not reconnect the saved location. Tap Connect Finance Folder.", false);
+        setStorageStatus(
+            "Saved automatically in this app on this device. Phone-folder access is not currently available; your dashboard data remains in app storage.",
+            true
+        );
         financeFileHandle = null;
     }
 }
@@ -772,8 +776,11 @@ if (navigator.storage && navigator.storage.persist) {
 // Local browser storage is the automatic, persistent working copy.
 renderAll();
 restorePreviouslySelectedFolder().catch(error => {
-    console.warn("Finance file restore skipped:", error);
-    setStorageStatus("Using browser storage. Reconnect your Finance folder when needed.", false);
+    console.warn("External finance file access is unavailable; using app storage:", error);
+    setStorageStatus(
+        "Saved automatically in this app on this device. External folder access is optional.",
+        true
+    );
 });
 window.addEventListener("resize", () => {
     if (dashboardSection && !dashboardSection.classList.contains("hidden")) renderCharts();
