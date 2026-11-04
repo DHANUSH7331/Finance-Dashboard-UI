@@ -202,13 +202,25 @@ const transactionsSection = document.getElementById("transactionsSection");
 const insightsSection = document.getElementById("insightsSection");
 
 function showSection(section) {
-    dashboardSection.classList.add("hidden");
-    transactionsSection.classList.add("hidden");
-    insightsSection.classList.add("hidden");
+    dashboardSection.classList.toggle("hidden", section !== "dashboard");
+    transactionsSection.classList.toggle("hidden", section !== "transactions");
+    insightsSection.classList.toggle("hidden", section !== "insights");
 
-    if (section === "dashboard") dashboardSection.classList.remove("hidden");
-    if (section === "transactions") transactionsSection.classList.remove("hidden");
-    if (section === "insights") insightsSection.classList.remove("hidden");
+    const pages = {
+        dashboard: ["navDashboard", "OVERVIEW", "Overview"],
+        transactions: ["navTransactions", "TRANSACTIONS", "Transactions"],
+        insights: ["navInsights", "INSIGHTS", "Insights"]
+    };
+    const current = pages[section] || pages.dashboard;
+    ["navDashboard", "navTransactions", "navInsights"].forEach(id => {
+        document.getElementById(id)?.classList.toggle("active", id === current[0]);
+    });
+    const label = document.getElementById("currentPageLabel");
+    if (label) label.textContent = current[1];
+    document.title = "Vesper — " + current[2];
+    if (section === "transactions") applyFilters();
+    if (section === "dashboard") requestAnimationFrame(renderCharts);
+    if (section === "insights") requestAnimationFrame(renderInsightsChart);
 }
 
 document.getElementById("addBtn").onclick = () => {
@@ -262,6 +274,8 @@ const emptyState = document.getElementById("emptyState");
 
 function renderTable(list = state.transactions) {
     tableBody.innerHTML = "";
+    const countLabel = document.getElementById("transactionCount");
+    if (countLabel) countLabel.textContent = list.length + (list.length === 1 ? " RECORD" : " RECORDS");
     emptyState.classList.toggle("hidden", list.length > 0);
     list.forEach(tx => {
         const row = document.createElement("tr");
@@ -319,13 +333,39 @@ function applyFilters() {
     renderTable(list);
 }
 
+function animateCurrency(element, target) {
+    if (!element) return;
+    const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const startValue = Number(element.dataset.numericValue || 0);
+    const endValue = Number(target || 0);
+    element.dataset.numericValue = String(endValue);
+    if (reduced || !Number.isFinite(endValue)) {
+        element.textContent = "₹" + endValue.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+        return;
+    }
+    const startTime = performance.now();
+    const duration = 820;
+    const tick = now => {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        const value = startValue + (endValue - startValue) * eased;
+        element.textContent = "₹" + Math.round(value).toLocaleString("en-IN");
+        if (progress < 1) requestAnimationFrame(tick);
+        else element.textContent = "₹" + endValue.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    };
+    requestAnimationFrame(tick);
+}
+
 function calculateSummary() {
     const { income, expense, balance } = getMonthlyFigures();
-    document.getElementById("totalIncome").innerText = "₹" + income.toLocaleString("en-IN");
-    document.getElementById("totalExpense").innerText = "₹" + expense.toLocaleString("en-IN");
-    document.getElementById("totalBalance").innerText = "₹" + balance.toLocaleString("en-IN");
+    animateCurrency(document.getElementById("totalIncome"), income);
+    animateCurrency(document.getElementById("totalExpense"), expense);
+    animateCurrency(document.getElementById("totalBalance"), balance);
     document.getElementById("summaryMonthLabel").innerText = new Date(selectedMonth + "-01T00:00:00")
         .toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    const monthLabel = document.getElementById("dashboardDateLabel");
+    if (monthLabel) monthLabel.textContent = new Date(selectedMonth + "-01T00:00:00")
+        .toLocaleDateString("en-IN", { month: "long", year: "numeric" }).toUpperCase();
 }
 
 function calculateInsights() {
@@ -363,7 +403,7 @@ function prepareChartCanvas(canvas, height = 280) {
     return { context, width, height };
 }
 
-function drawBalanceChart(canvas) {
+function drawBalanceChart(canvas, progress = 1) {
     const surface = prepareChartCanvas(canvas);
     if (!surface) return;
     const { context: ctx, width, height } = surface;
@@ -374,31 +414,54 @@ function drawBalanceChart(canvas) {
         const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
         months.push({ label: date.toLocaleDateString("en-IN", { month: "short" }), balance: getMonthlyFigures(key).balance });
     }
-    const left = 54, right = width - 16, top = 34, bottom = height - 42;
+    const left = 56, right = width - 18, top = 38, bottom = height - 42;
     const values = months.map(item => item.balance);
     const min = Math.min(0, ...values), max = Math.max(1, ...values), range = Math.max(1, max - min);
-    ctx.fillStyle = "#111827"; ctx.font = "bold 14px Arial"; ctx.fillText("Monthly balance", 16, 20);
-    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1; ctx.fillStyle = "#6b7280"; ctx.font = "11px Arial";
+    ctx.fillStyle = "#e8eaf5"; ctx.font = "600 11px Inter, Arial"; ctx.fillText("BALANCE (₹)", 16, 20);
+    ctx.strokeStyle = "rgba(177,186,215,.13)"; ctx.lineWidth = 1; ctx.fillStyle = "#7e88a8"; ctx.font = "10px Inter, Arial";
     for (let tick = 0; tick <= 4; tick++) {
         const y = top + (bottom - top) * tick / 4;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-        ctx.fillText("₹" + Math.round(max - range * tick / 4).toLocaleString("en-IN"), 3, y + 4);
+        ctx.fillText(Math.round(max - range * tick / 4).toLocaleString("en-IN"), 8, y + 4);
     }
     const points = months.map((item, index) => ({
         x: left + (right - left) * index / (months.length - 1),
         y: bottom - ((item.balance - min) / range) * (bottom - top)
     }));
-    ctx.strokeStyle = "#16a34a"; ctx.lineWidth = 3; ctx.beginPath();
+    const drawPoints = Math.max(1, Math.ceil(progress * (points.length - 1)));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top - 4, Math.max(0, (right - left) * progress + 8), bottom - top + 12);
+    ctx.clip();
+    const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+    gradient.addColorStop(0, "rgba(153,126,255,.20)");
+    gradient.addColorStop(1, "rgba(153,126,255,0)");
+    ctx.beginPath();
     points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
-    ctx.stroke();
+    ctx.lineTo(points[points.length - 1].x, bottom);
+    ctx.lineTo(points[0].x, bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.beginPath();
+    points.slice(0, drawPoints + 1).forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+    if (drawPoints < points.length - 1) {
+        const p = points[drawPoints - 1], q = points[drawPoints];
+        const local = progress * (points.length - 1) - (drawPoints - 1);
+        ctx.lineTo(p.x + (q.x - p.x) * local, p.y + (q.y - p.y) * local);
+    }
+    ctx.strokeStyle = "#9d87ff"; ctx.lineWidth = 2.8; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.shadowColor = "rgba(143,119,255,.45)"; ctx.shadowBlur = 14; ctx.stroke();
+    ctx.restore();
     points.forEach((point, index) => {
-        ctx.fillStyle = "#16a34a"; ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#6b7280"; ctx.textAlign = "center"; ctx.fillText(months[index].label, point.x, height - 18);
+        if (index / (points.length - 1) > progress) return;
+        ctx.beginPath(); ctx.arc(point.x, point.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#c4b5fd"; ctx.shadowColor = "#8b5cf6"; ctx.shadowBlur = 10; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = "#8992af"; ctx.font = "11px Inter, Arial"; ctx.textAlign = "center"; ctx.fillText(months[index].label, point.x, height - 17);
     });
     ctx.textAlign = "start";
 }
 
-function drawCategoryChart(canvas) {
+function drawCategoryChart(canvas, progress = 1) {
     const surface = prepareChartCanvas(canvas);
     if (!surface) return;
     const { context: ctx, width, height } = surface;
@@ -408,34 +471,54 @@ function drawCategoryChart(canvas) {
         totals[category] = (totals[category] || 0) + Number(tx.amount || 0);
     });
     const items = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    const colors = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#0d9488"];
-    ctx.fillStyle = "#111827"; ctx.font = "bold 14px Arial"; ctx.fillText("Expense categories", 16, 20);
+    const colors = ["#9b85ff", "#5d8dff", "#42c7b7", "#f1b968", "#e77fbc", "#7585aa"];
+    ctx.fillStyle = "#e8eaf5"; ctx.font = "600 11px Inter, Arial"; ctx.fillText("EXPENSE CATEGORIES", 16, 20);
     if (!items.length) {
-        ctx.fillStyle = "#6b7280"; ctx.font = "13px Arial"; ctx.textAlign = "center";
+        ctx.fillStyle = "#7e88a8"; ctx.font = "12px Inter, Arial"; ctx.textAlign = "center";
         ctx.fillText("No expense transactions for this month yet", width / 2, height / 2);
         ctx.textAlign = "start"; return;
     }
     const total = items.reduce((sum, item) => sum + item[1], 0);
-    const centerX = width * .32, centerY = height * .55, radius = Math.min(78, height * .29);
+    const centerX = width * .30, centerY = height * .56, radius = Math.min(80, height * .30);
     let angle = -Math.PI / 2;
     items.forEach((item, index) => {
-        const slice = item[1] / total * Math.PI * 2;
+        const slice = item[1] / total * Math.PI * 2 * progress;
         ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, angle, angle + slice);
         ctx.closePath(); ctx.fillStyle = colors[index % colors.length]; ctx.fill(); angle += slice;
     });
-    ctx.font = "12px Arial";
+    ctx.font = "12px Inter, Arial";
     items.forEach((item, index) => {
         const y = 58 + index * 31;
-        ctx.fillStyle = colors[index % colors.length]; ctx.fillRect(width * .58, y - 10, 11, 11);
-        ctx.fillStyle = "#374151";
-        const label = item[0].length > 16 ? item[0].slice(0, 15) + "…" : item[0];
-        ctx.fillText(label + " · ₹" + item[1].toLocaleString("en-IN"), width * .58 + 18, y);
+        ctx.fillStyle = colors[index % colors.length]; ctx.beginPath(); ctx.arc(width * .57 + 5, y - 4, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#aab1c8";
+        const label = item[0].length > 15 ? item[0].slice(0, 14) + "…" : item[0];
+        ctx.fillText(label, width * .57 + 17, y);
+        ctx.fillStyle = "#edf0fa"; ctx.textAlign = "right";
+        ctx.fillText("₹" + item[1].toLocaleString("en-IN"), width - 12, y);
+        ctx.textAlign = "start";
     });
 }
 
+let chartAnimationFrame = null;
 function renderCharts() {
-    drawBalanceChart(document.getElementById("monthlyChart"));
-    drawCategoryChart(document.getElementById("categoryChart"));
+    if (chartAnimationFrame) cancelAnimationFrame(chartAnimationFrame);
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduceMotion ? 0 : 950;
+    const startTime = performance.now();
+    const animate = now => {
+        const progress = duration ? Math.min(1, (now - startTime) / duration) : 1;
+        const eased = 1 - Math.pow(1 - progress, 3);
+        drawBalanceChart(document.getElementById("monthlyChart"), eased);
+        drawCategoryChart(document.getElementById("categoryChart"), eased);
+        drawCategoryChart(document.getElementById("insightsChart"), eased);
+        if (progress < 1) chartAnimationFrame = requestAnimationFrame(animate);
+        else chartAnimationFrame = null;
+    };
+    chartAnimationFrame = requestAnimationFrame(animate);
+}
+
+function renderInsightsChart() {
+    drawCategoryChart(document.getElementById("insightsChart"), 1);
 }
 
 function renderAll() {
@@ -444,6 +527,7 @@ function renderAll() {
     calculateInsights();
     renderCharts();
     applyFilters();
+    if (!insightsSection.classList.contains("hidden")) renderInsightsChart();
 }
 
 
@@ -502,6 +586,9 @@ sidebarOverlay?.addEventListener("click", () => setSidebarOpen(false));
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setSidebarOpen(false);
 });
+const dateLabel = document.getElementById("currentDateLabel");
+if (dateLabel) dateLabel.textContent = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
 [["navDashboard", "dashboard"], ["navTransactions", "transactions"], ["navInsights", "insights"]]
     .forEach(([id, section]) => {
         document.getElementById(id)?.addEventListener("click", () => {
