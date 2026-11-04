@@ -99,6 +99,16 @@ function persistFinanceFile() {
 
 async function restorePreviouslySelectedFolder() {
     try {
+        // Android browsers generally do not expose a persistent writable folder picker.
+        // Keep the dashboard fully usable with automatic origin storage instead of
+        // repeatedly asking the user to reconnect a folder they cannot persist.
+        if (!("showDirectoryPicker" in window) && !("showSaveFilePicker" in window)) {
+            setStorageStatus(
+                "Automatically saved on this device. Android does not allow this browser app to keep permanent access to a phone folder. Use Export backup for a separate file copy.",
+                true
+            );
+            return;
+        }
         directoryHandle = await loadDirectoryHandle();
         if (directoryHandle) {
             const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
@@ -754,7 +764,12 @@ document.getElementById("financeJsonInput").addEventListener("change", async (ev
     event.target.value = "";
 });
 
-// Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
+// Ask the browser to retain this app's local data against automatic storage cleanup.
+if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+}
+
+// Local browser storage is the automatic, persistent working copy.
 renderAll();
 restorePreviouslySelectedFolder().catch(error => {
     console.warn("Finance file restore skipped:", error);
