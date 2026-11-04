@@ -1,3 +1,122 @@
+(async function bootstrapFinanceDashboard() {
+const HANDLE_DB = "finance-dashboard-handles";
+const HANDLE_STORE = "directories";
+let directoryHandle = null;
+let financeFileHandle = null;
+let fileWriteQueue = Promise.resolve();
+
+function setStorageStatus(message, connected = false) {
+    const status = document.getElementById("storageStatus");
+    if (status) {
+        status.textContent = message;
+        status.dataset.connected = connected ? "true" : "false";
+    }
+}
+
+function openHandleDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(HANDLE_DB, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore(HANDLE_STORE);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveDirectoryHandle(handle) {
+    const db = await openHandleDatabase();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDLE_STORE, "readwrite");
+        tx.objectStore(HANDLE_STORE).put(handle, "finance-folder");
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+}
+
+async function loadDirectoryHandle() {
+    const db = await openHandleDatabase();
+    const handle = await new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDLE_STORE, "readonly");
+        const request = tx.objectStore(HANDLE_STORE).get("finance-folder");
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return handle;
+}
+
+function applyFileData(data) {
+    if (!data || !Array.isArray(data.transactions) ||
+        !data.monthlyIncomes || typeof data.monthlyIncomes !== "object") {
+        throw new Error("The selected finance-data.json file has an invalid format.");
+    }
+    localStorage.setItem("transactions", JSON.stringify(data.transactions));
+    localStorage.setItem("monthlyIncomes", JSON.stringify(data.monthlyIncomes));
+}
+
+function currentFinanceData() {
+    return {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        transactions: state.transactions,
+        monthlyIncomes
+    };
+}
+
+async function readFinanceFile() {
+    if (!financeFileHandle) return false;
+    const file = await financeFileHandle.getFile();
+    if (!file.size) return false;
+    const data = JSON.parse(await file.text());
+    applyFileData(data);
+    return true;
+}
+
+async function writeFinanceFile() {
+    if (!financeFileHandle) return;
+    const writable = await financeFileHandle.createWritable();
+    await writable.write(JSON.stringify(currentFinanceData(), null, 2));
+    await writable.close();
+    setStorageStatus("Connected — saved to Finance/finance-data.json", true);
+}
+
+function persistFinanceFile() {
+    if (!financeFileHandle) return;
+    fileWriteQueue = fileWriteQueue
+        .catch(() => {})
+        .then(writeFinanceFile)
+        .catch(error => {
+            console.error("Finance file save failed:", error);
+            setStorageStatus("File save failed. Reconnect the Finance folder and save again.", false);
+        });
+}
+
+async function restorePreviouslySelectedFolder() {
+    try {
+        directoryHandle = await loadDirectoryHandle();
+        if (!directoryHandle) {
+            setStorageStatus("Not connected — using browser storage.", false);
+            return;
+        }
+        const permission = await directoryHandle.queryPermission({ mode: "readwrite" });
+        if (permission !== "granted") {
+            setStorageStatus("Finance folder found. Tap Connect Finance Folder to grant access again.", false);
+            return;
+        }
+        financeFileHandle = await directoryHandle.getFileHandle("finance-data.json", { create: true });
+        const restored = await readFinanceFile();
+        setStorageStatus(restored
+            ? "Connected — loaded Finance/finance-data.json"
+            : "Connected — ready to save in Finance/finance-data.json", true);
+    } catch (error) {
+        console.warn("Could not restore Finance folder access:", error);
+        setStorageStatus("Could not access the saved folder. Reconnect it to continue.", false);
+        financeFileHandle = null;
+    }
+}
+
+await restorePreviouslySelectedFolder();
+
 const stored = JSON.parse(localStorage.getItem("transactions")) || [];
 const unique = Array.from(new Map(stored.map(t => [t.id, t])).values());
 localStorage.setItem("transactions", JSON.stringify(unique));
@@ -10,6 +129,7 @@ const legacyFixedIncome = Number(localStorage.getItem("fixedIncome")) || 0;
 if (Object.keys(monthlyIncomes).length === 0 && legacyFixedIncome > 0) {
     monthlyIncomes[currentMonthKey] = legacyFixedIncome;
     localStorage.setItem("monthlyIncomes", JSON.stringify(monthlyIncomes));
+    persistFinanceFile();
 }
 let selectedMonth = currentMonthKey;
 
@@ -37,6 +157,7 @@ function getMonthlyFigures(month = selectedMonth) {
 
 function saveToStorage() {
     localStorage.setItem("transactions", JSON.stringify(state.transactions));
+    persistFinanceFile();
 }
 
 const dashboardSection = document.getElementById("dashboardSection");
@@ -307,3 +428,4 @@ document.addEventListener("keydown", (event) => {
 
 // Role-switch UI is not present in this page, so do not call the undefined applyRoleUI().
 renderAll();
+})();
