@@ -3,7 +3,37 @@ const unique = Array.from(new Map(stored.map(t => [t.id, t])).values());
 localStorage.setItem("transactions", JSON.stringify(unique));
 
 let state = { transactions: unique };
-let fixedIncome = Number(localStorage.getItem("fixedIncome")) || 0;
+const currentMonthKey = new Date().toISOString().slice(0, 7);
+let monthlyIncomes = JSON.parse(localStorage.getItem("monthlyIncomes") || "{}");
+// Migrate the previous single fixed-income setting into the current month.
+const legacyFixedIncome = Number(localStorage.getItem("fixedIncome")) || 0;
+if (Object.keys(monthlyIncomes).length === 0 && legacyFixedIncome > 0) {
+    monthlyIncomes[currentMonthKey] = legacyFixedIncome;
+    localStorage.setItem("monthlyIncomes", JSON.stringify(monthlyIncomes));
+}
+let selectedMonth = currentMonthKey;
+
+function saveMonthlyIncomes() {
+    localStorage.setItem("monthlyIncomes", JSON.stringify(monthlyIncomes));
+}
+
+function getTransactionsForMonth(month) {
+    return state.transactions.filter(t => (t.date || "").slice(0, 7) === month);
+}
+
+function getMonthlyFigures(month = selectedMonth) {
+    const monthTransactions = getTransactionsForMonth(month);
+    const recordedIncome = monthTransactions
+        .filter(t => t.type === "income")
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const expense = monthTransactions
+        .filter(t => t.type === "expense")
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const income = Number(monthlyIncomes[month]) > 0
+        ? Number(monthlyIncomes[month])
+        : recordedIncome;
+    return { income, expense, balance: income - expense, transactions: monthTransactions };
+}
 
 function saveToStorage() {
     localStorage.setItem("transactions", JSON.stringify(state.transactions));
@@ -135,54 +165,31 @@ function applyFilters() {
 }
 
 function calculateSummary() {
-    let transactionIncome = 0;
-    let expense = 0;
-
-    state.transactions.forEach(t => {
-        if (t.type === "income") transactionIncome += t.amount;
-        else if (t.type === "expense") expense += t.amount;
-    });
-
-    // Use the configured fixed income as the starting income when one is set.
-    const income = fixedIncome > 0 ? fixedIncome : transactionIncome;
-    const balance = income - expense;
-
-    document.getElementById("totalIncome").innerText = "₹" + income;
-    document.getElementById("totalExpense").innerText = "₹" + expense;
-    document.getElementById("totalBalance").innerText = "₹" + balance;
+    const { income, expense, balance } = getMonthlyFigures();
+    document.getElementById("totalIncome").innerText = "₹" + income.toLocaleString("en-IN");
+    document.getElementById("totalExpense").innerText = "₹" + expense.toLocaleString("en-IN");
+    document.getElementById("totalBalance").innerText = "₹" + balance.toLocaleString("en-IN");
+    document.getElementById("summaryMonthLabel").innerText = new Date(selectedMonth + "-01T00:00:00")
+        .toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
 function calculateInsights() {
-    if (state.transactions.length === 0 && fixedIncome <= 0) {
+    const { income, expense, transactions } = getMonthlyFigures();
+    if (transactions.length === 0) {
         document.getElementById("topCategory").innerText = "-";
-        document.getElementById("savingsRate").innerText = "0%";
+        document.getElementById("savingsRate").innerText = income > 0 ? "100%" : "0%";
         return;
     }
 
     const categories = {};
-    let transactionIncome = 0;
-    let expense = 0;
-
-    state.transactions.forEach(t => {
-        if (t.type === "expense") {
-            categories[t.category] = (categories[t.category] || 0) + t.amount;
-            expense += t.amount;
-        } else if (t.type === "income") {
-            transactionIncome += t.amount;
-        }
+    transactions.filter(t => t.type === "expense").forEach(t => {
+        categories[t.category] = (categories[t.category] || 0) + Number(t.amount);
     });
 
-    const income = fixedIncome > 0 ? fixedIncome : transactionIncome;
-
-    let topCategory = "-";
-    if (Object.keys(categories).length > 0) {
-        topCategory = Object.keys(categories).reduce((a, b) =>
-            categories[a] > categories[b] ? a : b
-        );
-    }
-
+    const topCategory = Object.keys(categories).length
+        ? Object.keys(categories).reduce((a, b) => categories[a] > categories[b] ? a : b)
+        : "-";
     const savingsRate = income ? ((income - expense) / income * 100).toFixed(1) : 0;
-
     document.getElementById("topCategory").innerText = topCategory;
     document.getElementById("savingsRate").innerText = savingsRate + "%";
 }
@@ -238,23 +245,36 @@ function renderAll() {
 }
 
 
-// Fixed starting income (saved independently from transaction history)
-const fixedIncomeInput = document.getElementById("fixedIncomeInput");
+// Monthly income settings: each month keeps its own saved amount.
+const incomeMonthInput = document.getElementById("incomeMonthInput");
+const monthlyIncomeInput = document.getElementById("monthlyIncomeInput");
 const saveIncomeBtn = document.getElementById("saveIncomeBtn");
-if (fixedIncomeInput && saveIncomeBtn) {
-    fixedIncomeInput.value = fixedIncome || "";
-    saveIncomeBtn.addEventListener("click", () => {
-        const amount = Number(fixedIncomeInput.value);
-        if (!Number.isFinite(amount) || amount <= 0) {
-            alert("Enter a valid income amount greater than 0");
-            return;
-        }
-        fixedIncome = amount;
-        localStorage.setItem("fixedIncome", String(fixedIncome));
-        renderAll();
-        alert("Fixed total income saved");
-    });
+
+function syncIncomeEditor() {
+    incomeMonthInput.value = selectedMonth;
+    monthlyIncomeInput.value = monthlyIncomes[selectedMonth] ?? "";
 }
+incomeMonthInput.value = selectedMonth;
+syncIncomeEditor();
+
+incomeMonthInput.addEventListener("change", () => {
+    if (!incomeMonthInput.value) return;
+    selectedMonth = incomeMonthInput.value;
+    syncIncomeEditor();
+    renderAll();
+});
+
+saveIncomeBtn.addEventListener("click", () => {
+    const amount = Number(monthlyIncomeInput.value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        alert("Enter a valid monthly income greater than 0");
+        return;
+    }
+    monthlyIncomes[selectedMonth] = amount;
+    saveMonthlyIncomes();
+    renderAll();
+    alert("Income saved for " + selectedMonth);
+});
 
 // Mobile navigation drawer
 const sidebar = document.getElementById("sidebar");
