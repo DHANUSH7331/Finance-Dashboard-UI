@@ -60,12 +60,15 @@
         </div>
         <div class="card storage-settings">
             <h3>Local Finance File</h3>
-            <p>Choose a <strong>Finance</strong> folder on this device. Your transactions and monthly income will be saved in <strong>finance-data.json</strong> whenever you make changes. If folder selection is unavailable, choose the file location inside your Finance folder instead.</p>
+            <p>On supported desktop browsers, connect a Finance folder for automatic file updates. On mobile browsers without writable folder access, select the folder to import finance-data.json, then use Save File Now after edits and move the downloaded file into Finance with your Files app.</p>
             <div class="storage-actions">
-                <button id="connectFolderBtn" type="button">Connect Finance Folder / File</button>
+                <button id="connectFolderBtn" type="button">Choose Finance Folder / Import</button>
                 <button id="saveFileNowBtn" type="button">Save File Now</button>
                 <button id="exportBackupBtn" type="button">Export Backup</button>
             </div>
+            <input id="financeFolderInput" type="file" webkitdirectory directory multiple hidden aria-label="Select Finance folder">
+            <input id="financeJsonInput" type="file" accept=".json,application/json" hidden aria-label="Import finance JSON file">
+
             <p id="storageStatus" class="storage-status" role="status">Checking local storage options…</p>
         </div>
         <div class="charts">
