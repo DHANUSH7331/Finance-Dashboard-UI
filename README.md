@@ -1,7 +1,7 @@
 # Finance-Dashboard-UI
-**Finance Dashboard UI**
+**Vesper — Finance Dashboard UI**
 
-A responsive and interactive Finance Dashboard built using HTML, CSS, and Vanilla JavaScript.
+A responsive, animated personal finance dashboard with a premium dark fintech interface, native canvas charts, month-by-month income management, local persistence and offline app-shell caching.
 This project simulates a simple personal finance tracker where users can view financial summaries, manage transactions, and gain spending insights.
 
 This project was built as a frontend assignment to demonstrate UI design, state management, and client-side data handling without any backend.
@@ -102,3 +102,8 @@ Real backend integration
 Siriki Sai Dhanush
 
 GitHub: https://github.com/dhanush7331
+
+
+**Vesper UI refresh**
+
+The interface uses a deep navy visual system with violet/blue accents, animated KPI counters, animated native canvas analytics, responsive navigation, transaction search/filter/sort controls, and reduced-motion accessibility. Core data keys and existing finance features are retained.
